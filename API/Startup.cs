@@ -1,3 +1,4 @@
+using API.Helpers;
 using Core.Interfaces;
 using InfraStructure.Data;
 using InfraStructure.Repositories;
@@ -22,7 +23,10 @@ namespace API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddScoped(typeof(_IGenericRepository<>), (typeof(_GenericRepository<>)));
+            services.AddScoped<_IUnitOfWork, _UnitOfWork>();
             services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddAutoMapper(typeof(MappingProfile));
             services.AddControllers();
             services.AddDbContext<StoreContext>(x => x.UseSqlServer(_config.GetConnectionString("DefaultConncection")));
             
@@ -45,7 +49,14 @@ namespace API
 
             app.UseHttpsRedirection();
 
+            app.Use(async (context, next) =>
+            {
+                context.Response.Headers.Add("Some header", "Value header");
+                await next();
+            });
+
             app.UseRouting();
+            app.UseStaticFiles();
 
             app.UseAuthorization();
 
