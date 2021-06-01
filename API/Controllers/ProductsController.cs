@@ -1,15 +1,14 @@
 ﻿using API.DTOs;
 using API.Errors;
+using API.Helpers;
 using AutoMapper;
 using Core.Entities;
 using Core.Interfaces;
+using Core.SearchAndFilteringDTO;
 using Core.Specifications;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace API.Controllers
@@ -26,11 +25,19 @@ namespace API.Controllers
         }
 
         [HttpGet("GetProducts")]
-        public async Task<ActionResult<IReadOnlyList<ProductDTO>>> GetProducts()
+        public async Task<ActionResult<Pagination<ProductDTO>>> GetProducts([FromQuery]ProductSpecParams productParams)
         {
-            var spec = new ProductsWithTypesAndBrandsSpecifications();
+            var spec = new ProductsWithTypesAndBrandsSpecifications(productParams);
+            
+            var countSpec = new ProductWithFiltersForCountSpecification(productParams);
+            
+            var totalItems = await _IUnitOfWork.ProductRepository.CountAsync(spec);
+
             IReadOnlyList<Product> products = await _IUnitOfWork.ProductRepository.ListAsync(spec);
-            return Ok(_mapper.Map<IReadOnlyList<Product>, IReadOnlyList<ProductDTO>>(products));
+
+            var data = _mapper.Map<IReadOnlyList<Product>, IReadOnlyList<ProductDTO>>(products);
+            
+            return Ok(new Pagination<ProductDTO>(productParams.PageIndex, productParams.PageSize,totalItems,data));
         }
 
         [HttpGet("{id}")]
